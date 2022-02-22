@@ -1,0 +1,2 @@
+# aurigoStaging
+Aurigo ATF framework
