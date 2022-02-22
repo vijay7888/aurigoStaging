@@ -1,0 +1,58 @@
+trigger:
+  branches:
+    include:
+      - master
+stages:
+- stage: __default
+  jobs:
+  - job: Job
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+    - task: Maven@3
+      inputs:
+        mavenPomFile: pom.xml
+        mavenOptions: -Xmx3072m
+        javaHomeOption: JDKVersion
+        jdkVersionOption: 1.11
+        jdkArchitectureOption: x64
+        publishJUnitResults: false
+        testResultsFiles: '**/surefire-reports/TEST-*.xml'
+        goals: package
+    - task: Bash@3
+      inputs:
+        targetType: inline
+        script: >
+          echo "SourcesDirectory"
+
+          ls $(Build.SourcesDirectory)
+
+          echo "ArtifactStagingDirectory"
+
+          ls $(Build.ArtifactStagingDirectory)
+
+          cp -R $(Build.SourcesDirectory)/pom.xml $(Build.ArtifactStagingDirectory)/
+
+          cp -R $(Build.SourcesDirectory)/src $(Build.ArtifactStagingDirectory)/
+
+          echo "ArtifactStagingDirectory"
+
+          ls $(Build.ArtifactStagingDirectory)
+    - task: UniversalPackages@0
+      inputs:
+        command: publish
+        publishDirectory: $(Build.ArtifactStagingDirectory)
+        feedsToUsePublish: internal
+        vstsFeedPublish: 204341f0-d719-4586-ba98-2eef4306d30d
+        vstsFeedPackagePublish: $(Build.DefinitionName)-$(Build.BuildId)
+        versionOption: patch
+        packagePublishDescription: 1.1
+    - task: S3Upload@1
+      inputs:
+        awsCredentials: aurigo-master
+        regionName: us-east-1
+        bucketName: aurigo-builds-azure-us
+        sourceFolder: $(Build.ArtifactStagingDirectory)
+        globExpressions: '**'
+        targetFolder: $(Build.DefinitionName)\$(Build.DefinitionName)-$(Build.BuildId)
+        filesAcl: public-read
